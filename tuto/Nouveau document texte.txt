@@ -1,0 +1,80 @@
+- La génération des données est faite avec la librairie FAKER
+- On va devoir associer notre base de donnée: on modifie le fichier .env pour ajouter la base de donnée pagination-app
+- On va créer un model Student et -m pour faire une migration: php artisan make:model Student -m
+(la migration c'est à dire créer une table pour ce model)
+- On doit modifier la table students pour ajouter name, email et age
+- ON N'OUBLIE PAS DE FAIRE LA MIGRATION POUR QUE CES MODIF SOIENT PRISENT EN COMPTE: php artisan migrate
+- On va devoir créer des étudiants: on peut faire ça à la main avec TINKER:
+	- il faut d'abord aller dans le model Students pour autoriser l'ajout de données sur nam, email et age:
+	protected $fillable =('name', 'email', 'age'];
+	- php artisan tinker
+	Tinker vous permet d'interagir avec l'ensemble de votre application Laravel sur la ligne de commande, 
+	y compris vos modèles Eloquent, vos tâches, vos événements, etc. Pour entrer dans l'environnement Tinker, 
+	exécutez la commande tinker Artisan : php artisan tinker
+	- Pour remplir la table on fait:
+		- use App\Models\Student;
+		- $e1 = Student::create(['name' => 'John Doe', 'email' => 'johndoe@example.com', 'age' => 19]);
+		ça va nous créer une donnée et nous affiche toutes les infos:
+
+		=> App\Models\Student {#4406
+     		     name: "John Doe",
+     		     email: "johndoe@example.com",
+    		     age: 19,
+     		     updated_at: "2021-11-10 10:00:35",
+     		     created_at: "2021-11-10 10:00:35",
+     		     id: 1,
+   		    }
+		- Pour créer un 2éme étudiant on n'a pas besoin de la variable $e1:
+		Student::create(['name' => 'Jane Doe', 'email' => 'janedoe@example.com', 'age' => 14]);
+		- Pour compter combien de données nous avons dans la tabel: Student::count()
+
+- Pour indiquer si la personne est adulte ou pas en fonction de son âge:
+	- on va créer un attribut virtuel dans le model Student (le nom doit commencer par get et se termine par Attribute:
+		public function getIsAnAdultAttribute()
+    		{
+        		# code...
+    		}
+
+***** Pour charger la table avec des données on va utiliser factory et la librairie FAKER ***** 
+(dans la ligne de commande pour sortir de tinker on fait ctrl + C ou exit())
+- On commence par fabriquer notre factory: php artisan make:factory StudentFactory --model=Student
+(ça a généré un fichier StudentFactory dans dossier factories dans database)
+- Ajouter use App\Models\Student; et protected $model = Student::class;
+- dans la fonction Definition on met nos champs qu'on veut remplir
+- on revient sur la ligne de commande: php artisan tinker
+- On tape: Student::factory()->count(150)->create(); pour créer 150 exemples
+
+***** Pour la pagination *****
+- dans le fichier de route web.php on modifie le code 
+	return view('welcome', ['students' => Student::paginate(10)]);
+- Dans le fichier Ap\Providers\AppServiceProvider.php
+	On ajoute Paginator::useBootstrap(); dans la fonction boot() et on importe la class Paginator
+- dans la vue welcome on ajoute le code: {{ $students->links() }} tout en bas
+(ça génére une pagination qui necessite le recgargement de la page (on va donc intaller livewire, voir en bas)
+
+***** On va recharger les tables pour changer la fréquence d'adulte et de mineur *****
+- on va dans le fichier StudentFactory.php et on modifie la ligne 'age' => $this->faker->numberBetween(14, 25) pour 
+mettre 'age' => $this->faker->boolean(75) ? $faker->numberBetween(18, 25) : $faker->numberBetween(14, 17)
+{{- php artisan tinker
+- Encuite refaire dans la ligne de commande: Student::factory()->count(150)->create(); pour refaire la 
+migration et en créer encore 150 }} CA N'A PAS MARCHEE !!! >:(
+		OU
+- vider la base de donnée: "php artisan migrate:fresh" ça va supprimer toutes les tables et réappliquer les migrations
+OU
+- faire un rollback et réappliquer les migration: php artisan migrate:refresh
+- Aller dans le fichier database/seeders/databaseSeeder.php et ajouter dans la fonction run le code:
+Student::factory()->count(150)->create();
+- Puis exécuter ce code on va dans la ligne de commande: "php artisan db:seed" ça va ne recharger la table
+OU
+- on peut vider les tables et les reremplir avec une seule commande: "php artisan migrate:refresh --seed" 
+
+******** Intatllation de Livewire **********
+- ligne de commande: composer require livewire/livewire
+- ajouter dans le fichier welcome: @livewireStyle et livewireScripts
+- On crée un composant livewire: php artisan livewire:make students-list
+- On déplace notre table de la vue welcome à la vue students-list.blade.php
+- la variable students va passer par le composan au lieu de passer par la route web.php
+- dans notre composant on ajoute simplement use WithPagination; (!!!et ne pas oublier de m'importer)
+et ajouter protected $paginationTheme = 'bootstrap'; //pour importer le théme de bootstrap
+
+
